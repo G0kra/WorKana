@@ -1,0 +1,61 @@
+import dash
+from dash import Dash, html, dcc, dash_table
+import mysql.connector
+
+
+# Conectar ao banco de dados MySQL
+mydb = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  password="Senai123",
+  database="RobSun"
+)
+
+# Consulta SQL para obter os dados da tabela
+mycursor = mydb.cursor()
+mycursor.execute("SELECT * FROM RobSun.Dados")
+result = mycursor.fetchall()
+
+# Transformar o resultado da consulta em uma lista de dicionários
+data = []
+for row in result:
+    data.append(dict(zip(mycursor.column_names, row)))
+
+# Criar um aplicativo Dash
+app = dash.Dash(__name__)
+
+# Layout do dashboard
+app.layout = html.Div(children=[
+    html.H1(children='Dashboard MySQL'),
+
+    dcc.Input(id='search-input', type='text', placeholder='Pesquisar'),
+
+
+    dash_table.DataTable(
+        id='datatable',
+        columns=[{"name": i, "id": i} for i in mycursor.column_names],
+        data=data,
+    )
+])
+
+# Callback para atualizar a tabela com os dados filtrados
+@app.callback(
+    dash.dependencies.Output('datatable', 'data'),
+    [dash.dependencies.Input('search-input', 'value')]
+)
+def update_table(search_value):
+    if not search_value:
+        # Se a caixa de pesquisa estiver vazia, retornar todos os dados
+        return data
+    else:
+        # Filtrar os dados com base na pesquisa
+        filtered_data = []
+        for row in data:
+            for cell in row.values():
+                if search_value.lower() in str(cell).lower():
+                    filtered_data.append(row)
+                    break
+        return filtered_data
+
+if __name__ == '__main__':
+    app.run_server(debug=True)
